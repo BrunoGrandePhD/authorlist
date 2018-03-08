@@ -31,7 +31,8 @@ def parse_authors(file):
     """Parse authors TSV file"""
     authors = OrderedDict()
     for line in file:
-        author, affiliations = line.rstrip().split("\t")
+        line_split = line.rstrip().split("\t")
+        author, affiliations = line_split[0:2]
         affiliations = affiliations.split(",")
         authors[author] = affiliations
     return authors
