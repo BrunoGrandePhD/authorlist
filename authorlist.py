@@ -6,10 +6,10 @@ from collections import OrderedDict
 
 def main():
     args = parse_args()
-    authors = parse_authors(args.authors)
+    authors, metadata = parse_authors(args.authors)
     affiliations = parse_affiliations(args.affiliations)
     authors, affiliations = update_affiliations(authors, affiliations)
-    output(authors, affiliations, args.output, args.format)
+    output(authors, affiliations, metadata, args.output, args.format)
 
 
 def parse_args():
@@ -30,12 +30,15 @@ def parse_args():
 def parse_authors(file):
     """Parse authors TSV file"""
     authors = OrderedDict()
+    metadata = OrderedDict()
     for line in file:
         line_split = line.rstrip().split("\t")
         author, affiliations = line_split[0:2]
+        mdata = line_split[2:]
         affiliations = affiliations.split(",")
         authors[author] = affiliations
-    return authors
+        metadata[author] = mdata
+    return authors, metadata
 
 
 def parse_affiliations(file):
@@ -66,13 +69,13 @@ def update_affiliations(authors, affiliations):
     return authors, new_affiliations
 
 
-def output(authors, affiliations, file, format):
+def output(authors, affiliations, metadata, file, format):
     """Output author list and affiliations in specified format"""
     output_fn = globals()["output_" + format]
-    output_fn(authors, affiliations, file)
+    output_fn(authors, affiliations, metadata, file)
 
 
-def _output_general(authors, affiliations, file, lsup, rsup, affdel=".\n"):
+def _output_general(authors, affiliations, file, lsup, rsup, affdel=";\n"):
     """Output author list and affiliations in Markdown format"""
     result = []
     for i, author_item in enumerate(authors.items()):
@@ -99,14 +102,35 @@ def _output_general(authors, affiliations, file, lsup, rsup, affdel=".\n"):
     file.write(text)
 
 
-def output_markdown_pandoc(authors, affiliations, file):
+def output_markdown_pandoc(authors, affiliations, metadata, file):
     """Output author list and affiliations in Markdown format"""
     _output_general(authors, affiliations, file, lsup="^", rsup="^")
 
 
-def output_markdown_github(authors, affiliations, file):
+def output_markdown_github(authors, affiliations, metadata, file):
     """Output author list and affiliations in Markdown format"""
     _output_general(authors, affiliations, file, lsup="<sup>", rsup="</sup>")
+
+
+def output_tsv(authors, affiliations, metadata, file, list_sep="; "):
+    """Output author list and affiliations in TSV format"""
+    result = []
+    affiliations = {v: k for k, v in affiliations.items()}
+    for author_item in authors.items():
+        author, affiliation_ids = author_item
+        result.append(author)
+        for i, affiliation_id in enumerate(affiliation_ids):
+            if i == 0:
+                result.append("\t")
+            else:
+                result.append(list_sep)
+            result.append(affiliations[affiliation_id])
+        for field in metadata[author]:
+            result.append("\t")
+            result.append(field)
+        result.append("\n")
+    text = "".join(result)
+    file.write(text)
 
 
 if __name__ == '__main__':
